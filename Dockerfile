@@ -15,16 +15,17 @@ RUN groupadd -g 1000 devgroup && \
 RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
+    netcat-openbsd \
     && apt-get clean
 
 # Set directory
-WORKDIR /workspace
+WORKDIR /app
 
 # Install pip packages 
 COPY requirements-dev.txt requirements-dev.txt
 COPY requirements.txt requirements.txt
 
-# (for production enviroment change to /app/requirements.txt)
+# (for production enviroment change to requirements.txt)
 RUN pip install --no-cache-dir -r requirements-dev.txt
 
 # Switch to the non-root user 'devuser'

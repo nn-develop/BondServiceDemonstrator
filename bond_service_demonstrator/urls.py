@@ -1,10 +1,10 @@
 from django.contrib import admin
 from django.urls import path, include
-from django.urls.resolvers import URLResolver
+from django.urls.resolvers import URLResolver, URLPattern
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 # URL configuration for the project
-urlpatterns: list[URLResolver] = [
+urlpatterns: list[URLResolver | URLPattern] = [
     # Path for Django Admin Panel (for managing the application via UI)
     path("admin/", admin.site.urls),
     # Include URLs for the 'users' application, which handles user-related views like registration, login, etc.

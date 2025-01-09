@@ -1,7 +1,8 @@
 {
 	"name": "Bond Service Demonstrator Dev Container",
-	"dockerFile": "../Dockerfile",
-	"context": "..",
+	"dockerComposeFile": "../docker-compose.yml",
+	"service": "web",
+	"workspaceFolder": "/workspace",
 	"customizations": {
 		"vscode": {
 			"extensions": [

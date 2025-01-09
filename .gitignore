@@ -2,3 +2,5 @@
 *.pyo
 __pycache__
 # .env  # Commented out for demo purposes
+.venv
+logs/

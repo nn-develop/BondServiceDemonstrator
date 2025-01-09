@@ -2,6 +2,6 @@
 django
 djangorestframework
 drf-spectacular
-django-environ
 psycopg2
 requests
+python-dotenv
