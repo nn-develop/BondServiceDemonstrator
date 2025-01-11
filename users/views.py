@@ -8,17 +8,32 @@ from users.serializers import RegisterSerializer
 
 
 class RegisterView(CreateAPIView):
+    """
+    View for user registration.
+    """
+
     serializer_class = RegisterSerializer
     permission_classes: list[type[AllowAny]] = [AllowAny]
 
 
 class CustomObtainAuthToken(ObtainAuthToken):
+    """
+    Custom view for obtaining auth token with public access.
+    """
+
     permission_classes: list[type[AllowAny]] = [AllowAny]
 
 
 class CustomLogoutView(APIView):
+    """
+    View for logging out the user by deleting their auth token.
+    """
+
     authentication_classes: list[type[TokenAuthentication]] = [TokenAuthentication]
 
-    def post(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs) -> Response:
+        """
+        Log out the user by deleting the auth token.
+        """
         request.user.auth_token.delete()
         return Response({"detail": "Successfully logged out."}, status=200)
