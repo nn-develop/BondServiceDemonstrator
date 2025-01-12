@@ -1,5 +1,4 @@
-from decimal import Decimal, getcontext
-from datetime import datetime, timedelta, date
+from decimal import Decimal
 from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets, status
@@ -8,6 +7,7 @@ from rest_framework.request import Request
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import NotFound
+from .services.portfolio_analysis import PortfolioAnalysisService
 from .models import Bond
 from .serializers import BondSerializer
 from bond_service_demonstrator.logger import logger
@@ -98,26 +98,7 @@ class BondViewSet(viewsets.ModelViewSet):
 
 
 class PortfolioAnalysisView(APIView):
-    # Endpoint for portfolio analysis
     permission_classes: list[type[IsAuthenticated]] = [IsAuthenticated]
-
-    @staticmethod
-    def is_near_maturity(maturity_date) -> bool:
-        """Checks if the bond is near maturity (within 30 days)."""
-        return maturity_date <= datetime.now().date() + timedelta(days=30)
-
-    @staticmethod
-    def future_value(
-        value: Decimal, interest_rate: Decimal, maturity_date: date
-    ) -> Decimal:
-        """Calculates the future value of a bond based on interest rate and maturity."""
-        getcontext().prec = 10
-        time_to_maturity: Decimal = Decimal(
-            (maturity_date - date.today()).days
-        ) / Decimal(365.0)
-        return Decimal(value) * (
-            Decimal(1) + (Decimal(interest_rate) / Decimal(100)) * time_to_maturity
-        )
 
     def get(self, request: Request) -> Response:
         """Performs portfolio analysis for the current user's bonds."""
@@ -130,24 +111,20 @@ class PortfolioAnalysisView(APIView):
             )
             return Response(
                 {
-                    "average_interest_rate": 0,
+                    "average_interest_rate": Decimal(0),
                     "nearest_maturity_bond": None,
-                    "total_value": 0,
-                    "future_value": 0,
+                    "total_value": Decimal(0),
+                    "future_value": Decimal(0),
                 },
                 status=status.HTTP_200_OK,
             )
 
-        total_interest_rate: Decimal | float = sum(bond.interest_rate for bond in bonds)
-        average_interest_rate: Decimal | float = total_interest_rate / len(bonds)
-
-        nearest_bond: Bond = min(bonds, key=lambda bond: bond.maturity_date)
-
-        total_value: Decimal | float = sum(bond.tval for bond in bonds)
-        future_value: Decimal | float = sum(
-            self.future_value(bond.tval, bond.interest_rate, bond.maturity_date)
-            for bond in bonds
+        average_interest_rate: Decimal = PortfolioAnalysisService.average_interest_rate(
+            bonds
         )
+        nearest_bond: Bond = PortfolioAnalysisService.nearest_bond(bonds)
+        total_value: Decimal = PortfolioAnalysisService.total_value(bonds)
+        future_value: Decimal = PortfolioAnalysisService.future_value_sum(bonds)
 
         logger.debug(f"Portfolio analysis for user {request.user.username}:")
         logger.debug(f"Average Interest Rate: {average_interest_rate}")

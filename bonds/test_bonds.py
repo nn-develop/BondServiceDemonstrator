@@ -18,6 +18,11 @@ class BondServiceTestCase(TestCase):
         self.api_client: APIClient = APIClient()
         self.api_client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
 
+        self.another_user: User = User.objects.create_user(
+            username="anotheruser", password="password"
+        )
+        self.another_token: Token = Token.objects.create(user=self.another_user)
+
         # Data for testing
         self.valid_bond_data: dict[str, str | Decimal | date] = {
             "cval": "CZ0003551251",
@@ -63,10 +68,22 @@ class BondServiceTestCase(TestCase):
         response: Response = self.api_client.patch(
             f"/api/bonds/manage/{bond.pk}/", update_data, format="json"
         )
-
         self.assertEqual(response.status_code, 200)
         bond.refresh_from_db()
         self.assertEqual(bond.interest_frequency, "Updated Frequency")
+
+    def test_update_bond_as_another_user(self):
+        bond: Bond = Bond.objects.create(owner=self.user, **self.valid_bond_data)
+        self.api_client.credentials(
+            HTTP_AUTHORIZATION=f"Token {self.another_token.key}"
+        )
+        update_data: dict[str, str] = {"interest_frequency": "Updated Frequency"}
+        response: Response = self.api_client.patch(
+            f"/api/bonds/manage/{bond.pk}/", update_data, format="json"
+        )
+        self.assertEqual(response.status_code, 404)
+        bond.refresh_from_db()
+        self.assertNotEqual(bond.interest_frequency, "Updated Frequency")
 
     def test_delete_bond(self):
         bond: Bond = Bond.objects.create(owner=self.user, **self.valid_bond_data)
@@ -74,11 +91,43 @@ class BondServiceTestCase(TestCase):
         self.assertEqual(response.status_code, 204)
         self.assertEqual(Bond.objects.count(), 0)
 
+    def test_delete_bond_as_another_user(self):
+        bond: Bond = Bond.objects.create(owner=self.user, **self.valid_bond_data)
+        self.api_client.credentials(
+            HTTP_AUTHORIZATION=f"Token {self.another_token.key}"
+        )
+        response: Response = self.api_client.delete(f"/api/bonds/manage/{bond.pk}/")
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(Bond.objects.count(), 1)
+
     def test_list_bonds(self):
         Bond.objects.create(owner=self.user, **self.valid_bond_data)
         response: Response = self.api_client.get("/api/bonds/manage/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.json()), 1)
+
+    def test_list_bonds_as_another_user(self):
+        Bond.objects.create(owner=self.user, **self.valid_bond_data)
+        self.api_client.credentials(
+            HTTP_AUTHORIZATION=f"Token {self.another_token.key}"
+        )
+        response: Response = self.api_client.get("/api/bonds/manage/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json()), 0)
+
+    def test_view_bond(self):
+        bond: Bond = Bond.objects.create(owner=self.user, **self.valid_bond_data)
+        self.api_client.credentials(HTTP_AUTHORIZATION=f"Token {self.token.key}")
+        response: Response = self.api_client.get(f"/api/bonds/manage/{bond.pk}/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_view_bond_as_another_user(self):
+        bond: Bond = Bond.objects.create(owner=self.user, **self.valid_bond_data)
+        self.api_client.credentials(
+            HTTP_AUTHORIZATION=f"Token {self.another_token.key}"
+        )
+        response: Response = self.api_client.get(f"/api/bonds/manage/{bond.pk}/")
+        self.assertEqual(response.status_code, 404)
 
     def test_portfolio_analysis(self):
         Bond.objects.create(owner=self.user, **self.valid_bond_data)

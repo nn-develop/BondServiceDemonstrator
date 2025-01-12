@@ -1,6 +1,6 @@
 import re
 import requests
-from datetime import datetime, date
+from datetime import date
 from decimal import Decimal
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
@@ -95,7 +95,7 @@ class BondSerializer(serializers.ModelSerializer):
         logger.debug(f"CDCP data validated successfully: {cdcp_bond}")
         return cleaned_cdcp_bond
 
-    def prepare_bond_data(
+    def compare_bond_data(
         self,
         cdcp_bond: dict[str, str],
         existing_data: dict[str, str | Decimal | date] | None = None,
@@ -108,12 +108,13 @@ class BondSerializer(serializers.ModelSerializer):
         prepared_data: dict[str, str | Decimal | date] = existing_data or {}
 
         for key, value in cdcp_bond.items():
-            if key == "tval":
-                prepared_data[key] = Decimal(value)
-            elif key == "regdt":
-                prepared_data[key] = datetime.strptime(value, "%Y-%m-%d").date()
-            else:
-                prepared_data[key] = value
+            match (prepared_data.get(key), value):
+                case (existing_value, new_value) if existing_value != new_value:
+                    logger.debug(
+                        f"Data for {key} differ: existing value = {existing_value}, new value = {new_value}. Keeping existing value."
+                    )
+                case _:
+                    prepared_data[key] = value
 
         logger.debug(f"Bond data prepared: {cdcp_bond}")
         return prepared_data
@@ -146,7 +147,7 @@ class BondSerializer(serializers.ModelSerializer):
 
         # 4. Prepare the CDCP bond data by converting its fields to the appropriate types and merging with existing data.
         # This ensures that the data is properly formatted for the model and serializer.
-        prepared_cdcp_bond: dict[str, str | Decimal | date] = self.prepare_bond_data(
+        prepared_cdcp_bond: dict[str, str | Decimal | date] = self.compare_bond_data(
             cleaned_cdcp_bond, attrs
         )
         logger.debug(f"Finished validation. Prepared data: {prepared_cdcp_bond}")
