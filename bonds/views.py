@@ -59,6 +59,11 @@ class BondViewSet(viewsets.ModelViewSet):
         )
         try:
             bond: Bond = get_object_or_404(Bond, pk=kwargs["pk"], owner=request.user)
+
+            # Ensure cval is included in the request data
+            if isinstance(request.data, dict) and "cval" not in request.data:
+                request.data["cval"] = bond.cval
+
             serializer: BondSerializer = self.get_serializer(
                 bond, data=request.data, partial=True
             )
