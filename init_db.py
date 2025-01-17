@@ -43,6 +43,11 @@ class PostgresDatabaseManager:
         cursor.execute(f"SELECT 1 FROM pg_database WHERE datname = '{self.dbname}'")
         return cursor.fetchone() is not None
 
+    def drop_database(self, cursor: psycopg2.extensions.cursor) -> None:
+        """Drop the database if it exists."""
+        logger.info(f"Dropping database '{self.dbname}'...")
+        cursor.execute(f"DROP DATABASE IF EXISTS {self.dbname}")
+
     def create_database(self, cursor: psycopg2.extensions.cursor) -> None:
         """Create the database if it doesn't exist."""
         logger.info(f"Creating database '{self.dbname}'...")
@@ -96,6 +101,7 @@ class PostgresDatabaseManager:
 
             # Check if the database already exists
             if not self.check_database_exists(cursor):
+                self.drop_database(cursor)
                 self.create_database(cursor)
             else:
                 logger.info(f"Database '{self.dbname}' already exists.")

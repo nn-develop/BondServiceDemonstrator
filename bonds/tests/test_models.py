@@ -1,9 +1,9 @@
 from django.test import TestCase
 from django.core.exceptions import ValidationError
-from bonds.models import Bond
 from django.contrib.auth.models import User
 from decimal import Decimal
 from datetime import date, datetime
+from bonds.models import Bond, validate_cval_format, validate_cval, validate_positive
 
 
 class BondModelTestCase(TestCase):
@@ -28,9 +28,15 @@ class BondModelTestCase(TestCase):
             "owner": self.user,
         }
 
-    def test_validate_cval_format(self):
+    def test_validate_cval_format_invalid_value(self):
         with self.assertRaises(ValidationError):
-            Bond.validate_cval_format("INVALIDISIN")
+            validate_cval_format("INVALIDISIN")
+
+    def test_validate_cval_format_valid_value(self):
+        try:
+            validate_cval_format(str(self.valid_bond_data["cval"]))
+        except ValidationError:
+            self.fail("validate_cval_format() raised ValidationError unexpectedly!")
 
     def test_create_valid_bond(self):
         bond: Bond = Bond.objects.create(**self.valid_bond_data)
@@ -50,6 +56,16 @@ class BondModelTestCase(TestCase):
         del invalid_data["ison"]
         with self.assertRaises(ValidationError):
             Bond.objects.create(**invalid_data)
+
+    def test_validate_positive_valid_value(self):
+        with self.assertRaises(ValidationError):
+            validate_positive(Decimal(-1.00))
+
+    def test_validate_positive_invalid_value(self):
+        try:
+            validate_positive(Decimal(1.00))
+        except ValidationError:
+            self.fail("validate_positive() raised ValidationError unexpectedly!")
 
     def test_create_bond_invalid_interest_rate(self):
         invalid_data: dict[str, str | Decimal | date | User] = (
